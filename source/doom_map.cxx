@@ -271,7 +271,8 @@ bool DoomMap::isVisible(Line &l) {
 bool DoomMap::isBoxInFOV(bounds_t box) {
     // set up some basic bits...
     thing_t const* player = getThing(0);
-    int px = player->x_pos, py = player->y_pos, facing = player->facing;
+    int px = player->x_pos, py = player->y_pos;
+    double facing = to_radians(player->facing), hfov = to_radians(H_FOV);
     int16_t left = box.start.x_pos, top = box.start.y_pos, right = box.end.x_pos, bottom = box.end.y_pos;
     std::list<bounds_t> sides = { { {left, top}, {right, top} }, { {right, top}, {right, bottom} },
                                   { {left, bottom}, {right, bottom} }, { {left, top}, {left, bottom} } };
@@ -279,8 +280,8 @@ bool DoomMap::isBoxInFOV(bounds_t box) {
     // if we offset the camera (player) position positive-x to point O and compute an arc-tan from O to the end-points of the view angle
     // we can then compute the angles from there to Y and Z (corners of a side) -- if the angle ranges overlap, the side is in camera -- eg: the box is in FOV
     vertex_t O = { px + 400, py };
-    vertex_t B = { px + sin(to_radians(facing+H_FOV)) * 300, py + cos(to_radians(facing+H_FOV)) * 300 };
-    vertex_t C = { px + sin(to_radians(facing-H_FOV)) * 300, py + cos(to_radians(facing-H_FOV)) * 300 };
+    vertex_t B = { px + sin(facing+hfov) * 300, py + cos(facing+hfov) * 300 };
+    vertex_t C = { px + sin(facing+hfov) * 300, py + cos(facing+hfov) * 300 };
     vertex_t A = { px, py };
 
     for (auto side = sides.begin(); side != sides.end(); side++) {
@@ -290,17 +291,17 @@ bool DoomMap::isBoxInFOV(bounds_t box) {
         Line l( {s.start.x_pos, s.start.y_pos}, {s.end.x_pos, s.end.y_pos} );
         bool isv = isVisible(l);
 
-        int OAZ = point_at(Z) - facing;
+        double OAZ = point_at(Z) - facing;
         OAZ += OAZ<0?360:0;
         //OAZ += facing; // add in the facing value
-        OAZ %= 360;
-        int OAY = point_at(Y) - facing;
+        OAZ = fmodf64x(OAZ, M_PI_2);
+        double OAY = point_at(Y) - facing;
         OAY += OAY<0?360:0;
         //OAY += facing; // ditto
-        OAY %= 360;
+        OAY = fmodf64x(OAY, M_PI_2);
 
-        int OAB = point_at_from(O, B) + M_PI;
-        int OAC = point_at_from(O, C) + M_PI;
+        double OAB = point_at_from(O, B) + M_PI;
+        double OAC = point_at_from(O, C) + M_PI;
         
         if (OAC < OAY && OAY < OAB) return true;
         if (OAC < OAZ && OAZ < OAB) return true;            
