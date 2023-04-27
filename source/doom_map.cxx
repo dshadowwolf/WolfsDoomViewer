@@ -237,16 +237,14 @@ int DoomMap::point_at(vertex_t p) {
     double delta_x = p.x_pos - player->x_pos;
     float delta_y = p.y_pos - player->y_pos;
 
-    double base = atan2f(delta_y, delta_x);
-    return -1 * to_degrees(base); // otherwise pointing "up" (negative) along the Y axis reads as -90 degrees instead of 90 degrees
+    return atan2f(delta_y, delta_x);
 }
 
 int DoomMap::point_at_from(vertex_t a, vertex_t p) {
     double delta_x = p.x_pos - a.x_pos;
     float delta_y = p.y_pos - a.y_pos;
 
-    double base = atan2f(delta_y, delta_x);
-    return -1 * to_degrees(base); // otherwise pointing "up" (negative) along the Y axis reads as -90 degrees instead of 90 degrees
+    return atan2f(delta_y, delta_x);
 }
 
 #define TAU (M_PI * 2)
@@ -259,7 +257,7 @@ bool DoomMap::isVisible(Line &l) {
     double end = fmod((atan2(l.getEnd().second - player->y_pos, l.getEnd().first - player->x_pos) - pf_rad), TAU);
     double lower = MIN(start, end);
     double upper = MAX(start, end);
-    double hfov = to_radians(H_FOV);
+    double hfov = M_PI_4;
 
     if ((lower > M_PI_2 || lower < -M_PI_2) && (upper > M_PI_2 || upper < -M_PI_2)) return false;
 
@@ -292,17 +290,17 @@ bool DoomMap::isBoxInFOV(bounds_t box) {
         Line l( {s.start.x_pos, s.start.y_pos}, {s.end.x_pos, s.end.y_pos} );
         bool isv = isVisible(l);
 
-        int OAZ = point_at(Z);
+        int OAZ = point_at(Z) - facing;
         OAZ += OAZ<0?360:0;
         //OAZ += facing; // add in the facing value
         OAZ %= 360;
-        int OAY = point_at(Y);
+        int OAY = point_at(Y) - facing;
         OAY += OAY<0?360:0;
         //OAY += facing; // ditto
         OAY %= 360;
 
-        int OAB = point_at_from(O, B) + 180;
-        int OAC = point_at_from(O, C) + 180;
+        int OAB = point_at_from(O, B) + M_PI;
+        int OAC = point_at_from(O, C) + M_PI;
         
         if (OAC < OAY && OAY < OAB) return true;
         if (OAC < OAZ && OAZ < OAB) return true;            
