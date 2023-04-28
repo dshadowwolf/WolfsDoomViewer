@@ -7,6 +7,7 @@
 #include "generic_exception.hpp"
 
 #include <SDL2/SDL.h>
+#include <SDL2/SDL_ttf.h>
 
 #include "constants.h"
 
@@ -26,6 +27,12 @@ int main() {
     if (err < 0) {
         std::cerr << "Could not initialize SDL2: " << SDL_GetError() << std::endl;
         return -2;
+    }
+
+    TTF_Init();
+    if (!TTF_WasInit()) {
+        std::cerr << "Could not initialize SDL_ttf: " << TTF_GetError() << std::endl;
+        return -4;
     }
 
     SDL_Window *window = SDL_CreateWindow("WolfsDoom", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, SW, SH, SDL_WINDOW_SHOWN);

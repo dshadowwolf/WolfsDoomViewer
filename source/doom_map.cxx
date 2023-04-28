@@ -3,15 +3,25 @@
 #include "map_types.h"
 #include "line.h"
 #include "constants.h"
+#include "generic_exception.hpp"
 #include <SDL2/SDL2_gfxPrimitives.h>
 #include <math.h>
 #include <algorithm>
 #include <functional>
 #include <cmath>
+#include <SDL2/SDL_ttf.h>
+#include <sstream>
 
 DoomMap::DoomMap(std::string map_name, WadFile *wadFile)
 : mapName(map_name), theFile(std::make_shared<WadFile*>(wadFile)) 
 {
+    if (!TTF_WasInit()) TTF_Init();
+    dFont = TTF_OpenFont("/mnt/c/Windows/Fonts/calibri.ttf", 12);
+    if (dFont == NULL) {
+        std::stringstream err;
+        err << "Error opening font '/mnt/c/Windows/Fonts/calibri.ttf' in size 12pt: " << TTF_GetError();
+        throw generic_exception(err.str());
+    }
     int s_index = (*theFile)->getDirIndex(mapName);
     for( int i = 0; i < 8; i++ ) {
         wad_dirent_t entry = (*theFile)->getDirectoryEntry(s_index + i + 1);
@@ -218,10 +228,10 @@ void DoomMap::render_player_fov(SDL_Renderer *renderer) {
     float side_2_cos = cos(ah_rad);
     
     int sx = scale_x(player->x_pos, b.start.x_pos, b.end.x_pos), sy = scale_y(player->y_pos, b.start.y_pos, b.end.y_pos);
-    int pxa = sx + side_1_cos * SH;
-    int pya = sy + side_1_sin * SH;
-    int pxb = sx + side_2_cos * SH;
-    int pyb = sy + side_2_sin * SH;
+    int pxa = sx + side_1_cos * 226.27;
+    int pya = sy + side_1_sin * 226.27;
+    int pxb = sx + side_2_cos * 226.27;
+    int pyb = sy + side_2_sin * 226.27;
     aalineRGBA(renderer, sx, sy, pxa, pya, 255, 95, 31, 255);
     aalineRGBA(renderer, sx, sy, pxb, pyb, 255, 95, 31, 255);
     SDL_RenderPresent(renderer);
@@ -231,7 +241,7 @@ int to_degrees(double radians) {
     return static_cast<int>(rintf32x((radians * 180) / M_PI));
 }
 
-int DoomMap::point_at(vertex_t p) {
+double DoomMap::point_at(vertex_t p) {
     thing_t const* player = getThing(0);
 
     double delta_x = p.x_pos - player->x_pos;
@@ -240,7 +250,7 @@ int DoomMap::point_at(vertex_t p) {
     return atan2f(delta_y, delta_x);
 }
 
-int DoomMap::point_at_from(vertex_t a, vertex_t p) {
+double DoomMap::point_at_from(vertex_t a, vertex_t p) {
     double delta_x = p.x_pos - a.x_pos;
     float delta_y = p.y_pos - a.y_pos;
 
@@ -292,16 +302,18 @@ bool DoomMap::isBoxInFOV(bounds_t box) {
         bool isv = isVisible(l);
 
         double OAZ = point_at(Z) - facing;
-        OAZ += OAZ<0?360:0;
+        OAZ += OAZ<0?TAU:0;
         //OAZ += facing; // add in the facing value
         OAZ = fmodf64x(OAZ, M_PI_2);
         double OAY = point_at(Y) - facing;
-        OAY += OAY<0?360:0;
+        OAY += OAY<0?TAU:0;
         //OAY += facing; // ditto
         OAY = fmodf64x(OAY, M_PI_2);
 
         double OAB = point_at_from(O, B) + M_PI;
         double OAC = point_at_from(O, C) + M_PI;
+        OAB += OAB<0?TAU:0;
+        OAC += OAC<0?TAU:0;
         
         if (OAC < OAY && OAY < OAB) return true;
         if (OAC < OAZ && OAZ < OAB) return true;            
@@ -311,7 +323,6 @@ bool DoomMap::isBoxInFOV(bounds_t box) {
 
     return false;
 }
-
 // return true if point is on the back, false if point is on the front
 // front/back being left/right node depends on the direction of the
 // splitter.
@@ -378,18 +389,41 @@ std::list<Line> DoomMap::walk_next(bsp_node_t *current, SDL_Renderer *r) {
     //     return rv;
     // };
 
+    // SDL_Surface* surfaceMessage = NULL;
+    // SDL_Texture* textureMessage = NULL;
+    // SDL_Rect messageRectLeft = { x: b_left.x + 6, y: b_left.y + 6, w: 0, h: 0};
+    // SDL_Rect messageRectRight = { x: b_right.x + 6, y: b_right.y + 6, w: 0, h: 0};
+    // const char *textToRender = NULL;
+
     if (isLeft) {
         if (isBoxInFOV(boxLeft)) {
+            // std::stringstream p;
             if (ns >= 32768) {
                 subs.push_back(true);
                 ns -= 32768;
+                // p << "Subsector: ";
             } else {
                 subs.push_back(false);  // traversing if NEXT != NULL, not a subsector
                 next = getBSPNode(ns);
+                // p << "Node: ";
             }
+            // p << ns;
             // int16_t *c = getColor(ns);
+            // SDL_Color co = {c[0], c[1], c[2], c[3]};
             // SDL_SetRenderDrawColor(r, c[0], c[1], c[2], c[3]);
             // SDL_RenderDrawRect(r, &b_left);
+            // textToRender = p.str().c_str();
+            // surfaceMessage = TTF_RenderUTF8_Solid(dFont, textToRender, co);
+            // if (surfaceMessage == NULL) {
+            //     std::stringstream err;
+            //     err << "Unable to render string: " << SDL_GetError() << " -- (" << TTF_GetError() << ")" << std::endl;
+            //     std::cout << err.str();
+            //     throw generic_exception(err.str());
+            // }
+            // textureMessage = SDL_CreateTextureFromSurface(r, surfaceMessage);
+            // messageRectLeft.w = surfaceMessage->w;
+            // messageRectLeft.h = surfaceMessage->h;
+            // SDL_RenderCopy(r, textureMessage, NULL, &messageRectLeft);
         } else {
             subs.push_back(false); // not a subsector
         }
@@ -410,17 +444,33 @@ std::list<Line> DoomMap::walk_next(bsp_node_t *current, SDL_Renderer *r) {
         int t = ns;
         ns = os;
         os = t;
+        // std::stringstream p;
         if (isBoxInFOV(boxRight)) {
             if (ns >= 32768) {
                 subs.push_back(true);
                 ns -= 32768;
+                // p << "Subsector: ";
             } else {
                 subs.push_back(false);
                 next = getBSPNode(ns);
+                // p << "Node: ";
             }
+            // p << ns;
             // int16_t *c = getColor(ns);
+            // SDL_Color co = {c[0], c[1], c[2], c[3]};
             // SDL_SetRenderDrawColor(r, c[0], c[1], c[2], c[3]);
             // SDL_RenderDrawRect(r,&b_right);
+            // textToRender = p.str().c_str();
+            // surfaceMessage = TTF_RenderUTF8_Solid(dFont, textToRender, co);
+            // if (surfaceMessage == NULL) {
+            //     std::stringstream err;
+            //     err << "Unable to render string: " << SDL_GetError() << " -- (" << TTF_GetError() << ")" << std::endl;
+            //     throw generic_exception(err.str());
+            // }
+            // textureMessage = SDL_CreateTextureFromSurface(r, surfaceMessage);
+            // messageRectRight.w = surfaceMessage->w;
+            // messageRectRight.h = surfaceMessage->h;
+            // SDL_RenderCopy(r, textureMessage, NULL, &messageRectRight);
         } else {
             subs.push_back(false);
         }
@@ -438,6 +488,12 @@ std::list<Line> DoomMap::walk_next(bsp_node_t *current, SDL_Renderer *r) {
         }
 
     }
+
+    // if (textureMessage != NULL)
+    //     SDL_DestroyTexture(textureMessage);
+
+    // if (surfaceMessage != NULL)
+    //     SDL_FreeSurface(surfaceMessage);
 
     if (next != NULL) {
         temp = walk_next(next, r);

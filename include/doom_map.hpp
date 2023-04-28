@@ -10,6 +10,7 @@
 #include <string.h>
 #include <iostream>
 #include <SDL2/SDL.h>
+#include <SDL2/SDL_ttf.h>
 #include <list>
 
 typedef struct bounds_s {
@@ -45,13 +46,14 @@ class DoomMap {
     uint16_t numnodes;
     size_t sector_offs;
     uint16_t numsectors;
+    TTF_Font *dFont;
 
     std::string mapName;
     std::shared_ptr<WadFile *> theFile;
 
     protected:
-    int point_at(vertex_t p);
-    int point_at_from(vertex_t a, vertex_t p);
+    double point_at(vertex_t p);
+    double point_at_from(vertex_t a, vertex_t p);
     bool isBoxInFOV(bounds_t box);
     //std::vector<Line> walk_next(thing_t const* player, SDL_Renderer *renderer, bsp_node_t *node, bounds_t *extents);
     //std::vector<Line> getSubSector(uint16_t subsector_number);
